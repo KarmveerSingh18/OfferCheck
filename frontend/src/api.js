@@ -1,4 +1,4 @@
-const API_BASE = 'http://localhost:3001/api';
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
 
 /**
  * Sends offer text to OfferCheck verification engine.
@@ -6,7 +6,7 @@ const API_BASE = 'http://localhost:3001/api';
  * @returns {Promise<{claims: Object, evidence: Array, assessment: Object}>}
  */
 export async function analyzeOffer(offerText) {
-  const response = await fetch(`${API_BASE}/analyze`, {
+  const response = await fetch(`${API_URL}/analyze`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json'
