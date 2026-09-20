@@ -81,11 +81,11 @@ export default function InputPanel({ onAnalyze, isLoading, error }) {
     <div className="input-panel-container">
       <div className="panel-header">
         <h2 className="panel-title">Verify Job or Internship Offer</h2>
-        <p className="panel-subtitle">
-          Paste the full text of an email, offer letter, or recruitment message to evaluate fraud signals and domain integrity.
-        </p>
         <p className="panel-differentiator">
           Independent verification across domain registration, sender consistency, and claim extraction — not a keyword filter.
+        </p>
+        <p className="panel-instruction">
+          Paste the full text of an email, offer letter, or recruitment message to evaluate fraud signals and domain integrity.
         </p>
       </div>
 
