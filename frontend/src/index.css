@@ -127,7 +127,7 @@ body {
 }
 
 .panel-header {
-  margin-bottom: 1.5rem;
+  margin-bottom: 1.85rem;
 }
 
 .panel-title {
@@ -140,12 +140,15 @@ body {
 .panel-subtitle {
   font-size: 0.9rem;
   color: var(--text-secondary);
+  line-height: 1.5;
 }
 
 .panel-differentiator {
-  font-size: 0.825rem;
+  font-size: 0.785rem;
   color: var(--text-muted);
-  margin-top: 0.35rem;
+  font-weight: 400;
+  line-height: 1.45;
+  margin-top: 0.4rem;
 }
 
 .form-group {
