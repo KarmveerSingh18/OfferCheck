@@ -2,6 +2,7 @@ import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import analyzeRouter from './routes/analyze.js';
+import { getHistorySummaries } from './services/historyStore.js';
 
 dotenv.config();
 
@@ -16,6 +17,10 @@ app.use(cors({
 app.use(express.json({ limit: '1mb' }));
 
 app.use('/api/analyze', analyzeRouter);
+
+app.get('/api/history', (req, res) => {
+  res.json({ analyses: getHistorySummaries() });
+});
 
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });

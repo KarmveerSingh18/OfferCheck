@@ -87,6 +87,8 @@ export function calculateRisk(claims, consistencyResult, rdapResult, searchResul
     if (verdict === 'LIKELY_LEGIT') {
       verdict = 'SUSPICIOUS';
       overrideApplied = 'payment_requested_override';
+    } else if (!overrideApplied) {
+      overrideApplied = 'payment_requested_override';
     }
   }
 
@@ -94,6 +96,8 @@ export function calculateRisk(claims, consistencyResult, rdapResult, searchResul
   if (rdapResult?.status === 'NOT_FOUND') {
     if (verdict === 'LIKELY_LEGIT') {
       verdict = 'SUSPICIOUS';
+      overrideApplied = 'domain_not_found_override';
+    } else if (!overrideApplied) {
       overrideApplied = 'domain_not_found_override';
     }
   }

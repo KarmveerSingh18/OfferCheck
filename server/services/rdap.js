@@ -21,17 +21,18 @@ export async function lookupRdap(sender_domain) {
     };
   }
 
-  // Clean domain (strip subdomains like mail. or www. if multi-part)
+  // Clean domain (strip www.)
   const cleanDomain = sender_domain.toLowerCase().trim().replace(/^www\./, '');
   const url = `https://rdap.org/domain/${encodeURIComponent(cleanDomain)}`;
 
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 3500); // 3.5s timeout
+  const timeoutId = setTimeout(() => controller.abort(), 5000); // 5s timeout
 
   try {
     const response = await fetch(url, {
       signal: controller.signal,
       headers: {
+        'User-Agent': 'OfferCheck-Security-Analyzer/1.0 (https://github.com/offercheck)',
         'Accept': 'application/rdap+json, application/json'
       }
     });

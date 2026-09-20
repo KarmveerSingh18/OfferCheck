@@ -1,58 +1,22 @@
 import { GoogleGenerativeAI } from '@google/generative-ai';
 
-const CLAIM_EXTRACTION_SCHEMA = {
-  type: 'object',
-  properties: {
-    company_name: {
-      type: 'string',
-      description: 'The exact company or organization name offering the job, or null if unspecified.'
-    },
-    sender_email: {
-      type: 'string',
-      description: 'The email address of the recruiter, sender, or contact person, or null if none.'
-    },
-    sender_domain: {
-      type: 'string',
-      description: 'The domain name of the sender email or company website mentioned, or null.'
-    },
-    payment_requested: {
-      type: 'boolean',
-      description: 'Whether any upfront fee, background check fee, equipment deposit, training charge, or crypto/giftcard transaction is requested.'
-    },
-    amount: {
-      type: 'string',
-      description: 'The specific payment amount requested if payment_requested is true, otherwise null.'
-    },
-    deadline_pressure_phrases: {
-      type: 'array',
-      items: { type: 'string' },
-      description: 'Verbatim phrases indicating artificial urgency, immediate reply demands, or expiration threats.'
-    },
-    claimed_affiliations: {
-      type: 'array',
-      items: { type: 'string' },
-      description: 'Any notable organizations, institutions, universities, or partners claimed in the text.'
-    }
-  },
-  required: [
-    'company_name',
-    'sender_email',
-    'sender_domain',
-    'payment_requested',
-    'amount',
-    'deadline_pressure_phrases',
-    'claimed_affiliations'
-  ]
-};
-
 const EXTRACTION_SYSTEM_PROMPT = `You are a forensic text claim extractor for job and internship offers.
 Your job is ONLY to extract specific, literal claims made in the provided text.
 CRITICAL RULES:
 1. Do NOT invent, normalize, correct, or assume domain names or company names. Extract them verbatim as they appear in the text.
 2. If an email address is present (e.g. hr@company-careers.org), sender_domain should be the domain portion ("company-careers.org").
-3. payment_requested MUST be true if the offer asks the candidate to pay for equipment, software, background checks, registration, processing, wire transfers, or cryptocurrency.
+3. payment_requested MUST be true IF AND ONLY IF the offer requires the candidate to pay/transfer money, buy equipment, pay a deposit, or purchase gift cards. If the text says "no fees", "no upfront payment", or doesn't mention paying money, payment_requested MUST be false.
 4. deadline_pressure_phrases must be exact quotes from the text (e.g. "respond within 24 hours or forfeit").
-5. Return strictly valid JSON adhering to the specified schema. No markdown formatting, no commentary.`;
+5. Return strictly valid JSON with this exact shape:
+{
+  "company_name": string | null,
+  "sender_email": string | null,
+  "sender_domain": string | null,
+  "payment_requested": boolean,
+  "amount": string | null,
+  "deadline_pressure_phrases": string[],
+  "claimed_affiliations": string[]
+}`;
 
 /**
  * Extracts structured claims from the raw offer text using Gemini LLM.
@@ -71,7 +35,6 @@ export async function extractClaims(offerText) {
   const apiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY || process.env.LLM_API_KEY;
 
   if (!apiKey) {
-    console.warn('[Extractor] No GEMINI_API_KEY configured in environment. Using deterministic fallback parser.');
     return fallbackRegexExtractor(offerText);
   }
 
@@ -112,7 +75,7 @@ function sanitizeClaims(data, rawText) {
   if (!sender_domain && sender_email && sender_email.includes('@')) {
     sender_domain = sender_email.split('@')[1];
   }
-  // Strip protocol or paths if LLM included them
+  // Strip protocol or paths if included
   if (sender_domain) {
     sender_domain = sender_domain.replace(/^https?:\/\//i, '').split('/')[0].split(':')[0];
   }
@@ -152,27 +115,53 @@ function fallbackRegexExtractor(text) {
 
   // Company detection heuristic
   let company_name = null;
-  const compMatch = text.match(/(?:at|from|with|joining)\s+([A-Z][a-zA-Z0-9]+(?:\s+[A-Z][a-zA-Z0-9]+)?(?:\s+(?:Inc|LLC|Corp|Corporation|Technologies|Solutions|Group|Ltd))?)/);
+  // Look for phrases like "Google LLC is pleased", "Microsoft Corporation is pleased", "behalf of Acme Technologies", "at Acme Corp"
+  const compMatch = text.match(/(?:on\s+behalf\s+of|joining|at|with|welcome\s+to|from)\s+([A-Z][a-zA-Z0-9]+(?:\s+[A-Z][a-zA-Z0-9]+)*(?:\s+(?:LLC|Inc|Corp|Corporation|Technologies|Solutions|Group|Ltd|Staffing|Agency))?)/i)
+    || text.match(/([A-Z][a-zA-Z0-9]+(?:\s+[A-Z][a-zA-Z0-9]+)*(?:\s+(?:LLC|Inc|Corp|Corporation|Technologies|Solutions|Group|Ltd)))\s+(?:is\s+pleased|is\s+excited|welcomes|invites)/i);
+
   if (compMatch) {
-    company_name = compMatch[1].trim();
-  } else if (sender_domain) {
+    company_name = compMatch[1].split('\n')[0].trim();
+  } else if (sender_domain && !sender_domain.includes('gmail') && !sender_domain.includes('yahoo') && !sender_domain.includes('outlook')) {
     const mainName = sender_domain.split('.')[0];
     company_name = mainName.charAt(0).toUpperCase() + mainName.slice(1);
   }
 
-  // Payment heuristic
-  const paymentRegex = /(?:fee|deposit|payment|pay\s+\$|wire\s+transfer|gift\s+card|bitcoin|crypto|check\s+deposit|equipment\s+fee|background\s+check\s+fee)/i;
-  const payment_requested = paymentRegex.test(text);
+  // Payment heuristic with negation checking
+  let payment_requested = false;
+  let amount = null;
 
-  const amountMatch = text.match(/\$\s*([0-9]+(?:,[0-9]{3})*(?:\.[0-9]{2})?)/);
-  const amount = amountMatch ? `$${amountMatch[1]}` : null;
+  // Check for explicit payment demands
+  const affirmativePaymentPatterns = [
+    /(?:submit|pay|send|wire|deposit|transfer|purchase)\s+(?:a\s+)?(?:\$\s*\d+|\w+\s+)*(?:fee|deposit|insurance|check|gift\s*card|crypto|bitcoin|equipment)/i,
+    /(?:equipment|onboarding|background\s*check|registration|processing)\s+(?:fee|deposit|charge)\s+of\s+\$\s*\d+/i,
+    /(?:refundable|mandatory|required)\s+(?:equipment|onboarding|insurance|deposit|fee)\s+(?:of\s+)?\$\s*\d+/i
+  ];
+
+  for (const pat of affirmativePaymentPatterns) {
+    const m = text.match(pat);
+    if (m) {
+      payment_requested = true;
+      break;
+    }
+  }
+
+  // Double check negation (e.g. "no fees", "no upfront payment")
+  const negationPattern = /(?:no|never|without|zero|not)\s+(?:any\s+)?(?:fees?|payment|charges?|deposit|cost)/i;
+  if (negationPattern.test(text) && !affirmativePaymentPatterns.some(p => p.test(text))) {
+    payment_requested = false;
+  }
+
+  if (payment_requested) {
+    const amountMatch = text.match(/\$\s*([0-9]+(?:,[0-9]{3})*(?:\.[0-9]{2})?)/);
+    if (amountMatch) amount = `$${amountMatch[1]}`;
+  }
 
   // Pressure phrases
   const pressurePhrases = [];
   const pressureRegexes = [
     /urgent(?:ly)?/i,
     /within\s+\d+\s+(?:hours?|hrs?|days?)/i,
-    /immediate(?:ly)?\s+response/i,
+    /immediate(?:ly)?\s+(?:response|revoked|forfeit)/i,
     /offer\s+expires\s+in/i,
     /act\s+fast/i,
     /strictly\s+confidential/i
@@ -187,7 +176,7 @@ function fallbackRegexExtractor(text) {
     sender_email,
     sender_domain,
     payment_requested,
-    amount: payment_requested ? amount : null,
+    amount,
     deadline_pressure_phrases: pressurePhrases,
     claimed_affiliations: []
   };
