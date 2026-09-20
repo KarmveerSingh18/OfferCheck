@@ -28,6 +28,12 @@ User Input (Offer Text)
 6. Assessment & Structured Results View (Verdict, score, evidence cards)
 ```
 
+### Key Design Principles
+
+- **Separation of Extraction and Verification**: The LLM is used strictly for structured data extraction, gated by a verbatim substring validator. Keeping extraction and verification as separate stages ensures a hallucinated or misread claim cannot silently corrupt the verification signals.
+- **Deterministic, LLM-Free Scoring**: Risk scoring is calculated via transparent additive rules rather than LLM judgment. This ensures verdicts are reproducible, predictable, and auditable across runs rather than relying on a variable black-box AI opinion.
+- **Hard Safety Overrides**: Non-negotiable floor verdicts are enforced for critical red flags (such as upfront payment requests or non-existent domains). This ensures a well-produced scam with convincing mitigating signals—like an aged domain or active web presence—cannot dilute its risk score or talk its way to a clean verdict.
+
 ## Running the Application
 
 ### 1. Backend Server
