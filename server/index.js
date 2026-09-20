@@ -10,13 +10,17 @@ const app = express();
 const PORT = process.env.PORT || 3001;
 
 app.use(cors({
-  origin: ['http://localhost:5173', 'http://127.0.0.1:5173'],
+  origin: [
+    'http://localhost:5173',
+    'http://127.0.0.1:5173',
+    'https://offer-check-jade.vercel.app'
+  ],
   credentials: true
 }));
 
 app.use(express.json({ limit: '1mb' }));
 
-app.use('/api/analyze', analyzeRouter);
+app.use(['/api/analyze', '/analyze'], analyzeRouter);
 
 app.get('/api/history', (req, res) => {
   res.json({ analyses: getHistorySummaries() });
