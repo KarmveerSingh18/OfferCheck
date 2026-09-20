@@ -84,6 +84,9 @@ export default function InputPanel({ onAnalyze, isLoading, error }) {
         <p className="panel-subtitle">
           Paste the full text of an email, offer letter, or recruitment message to evaluate fraud signals and domain integrity.
         </p>
+        <p className="panel-differentiator">
+          Independent verification across domain registration, sender consistency, and claim extraction — not a keyword filter.
+        </p>
       </div>
 
       <form onSubmit={handleSubmit} className="analysis-form">
