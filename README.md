@@ -2,7 +2,7 @@
 
 **Built for BUILD//ANYTHING 2026** — a 10-hour hackathon.
 
-🔗 **Live demo:** [add your deployed link here once live]
+🔗 **Live demo:** https://offer-check-jade.vercel.app/
 
 ## The Problem
 
