@@ -118,7 +118,8 @@ export function calculateRisk(claims, consistencyResult, rdapResult, searchResul
     usableSignalsCount += 1;
   }
 
-  const insufficientEvidence = usableSignalsCount < 2;
+  // If a hard override applied, the verdict is a confident rule-based determination.
+  const insufficientEvidence = overrideApplied ? false : usableSignalsCount < 2;
 
   return {
     verdict,
