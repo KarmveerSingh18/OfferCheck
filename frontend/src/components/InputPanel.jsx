@@ -7,79 +7,41 @@ const LOADING_STEPS = [
   'Scoring evidence...'
 ];
 
-const SAMPLE_SUSPICIOUS = `Subject: Exciting Remote Data Entry Position - Start Immediately!
-From: sarah.thompson@gmail.com
+const SAMPLE_SUSPICIOUS = `From: Google Recruitment Team <google.careers.hr@gmail.com>
+Subject: Urgent Job Offer - Remote Software Intern
 
-Hi there,
+Congratulations! Google LLC is pleased to offer you the position of Remote Software Engineer Intern.
+Your starting compensation is $65/hr.
 
-I'm Sarah Thompson, a Senior Recruiter at Google. I found your resume on Indeed and I'm impressed with your qualifications. We have an immediate opening for a Remote Data Entry Specialist.
+To finalize your onboarding and dispatch your company laptop, you are required to submit a refundable equipment insurance fee of $250 via wire transfer within 24 hours or this offer will be revoked immediately.
 
-Position Details:
-- Company: Google LLC
-- Position: Remote Data Entry Specialist
-- Pay: $65/hr
-- Hours: Flexible, 20-40 hrs/week
-- Location: 100% Remote
+Contact: google.careers.hr@gmail.com
+Google LLC`;
 
-To secure your position, we require a $250 refundable equipment insurance fee. This will be returned after 90 days of employment. Please send payment via Zelle to equipment.dept@gmail.com.
-
-Once payment is confirmed, we'll ship your equipment and onboarding materials within 48 hours.
-
-Best regards,
-Sarah Thompson
-Senior Recruiter, Google LLC
-sarah.thompson@gmail.com`;
-
-const SAMPLE_LEGITIMATE = `Subject: Offer of Employment - Software Engineer II
-From: recruiting@microsoft.com
+const SAMPLE_LEGITIMATE = `From: Microsoft University Recruiting <internships@microsoft.com>
+Subject: Offer of Employment - Software Engineer Intern
 
 Dear Candidate,
-
-Following your interviews on May 15th and 20th, I am pleased to extend an offer of employment for the position of Software Engineer II at Microsoft Corporation.
-
-Position: Software Engineer II
-Team: Azure Cloud Infrastructure
-Location: Redmond, WA (Building 34)
-Start Date: July 15, 2025
-Base Salary: $165,000/year
-Signing Bonus: $25,000
-Annual Stock Award: $120,000 (vesting over 4 years)
-
-Benefits include comprehensive health/dental/vision insurance, 401(k) matching, and employee stock purchase plan.
-
-Please review the attached formal offer letter and return the signed copy within 10 business days to recruiting@microsoft.com.
+Microsoft Corporation is pleased to extend an offer for the Software Engineer Intern role in Redmond, WA.
+Please review your formal offer letter attached and accept through the Microsoft Careers portal at microsoft.com.
+There are no fees associated with this application or onboarding process.
 
 Best regards,
-Jennifer Walsh
-Senior Technical Recruiter
+University Talent Team
 Microsoft Corporation
-recruiting@microsoft.com`;
+internships@microsoft.com`;
 
-const SAMPLE_BORDERLINE = `Subject: Contract Opportunity - Marketing Coordinator
-From: david.chen@talentpartners-recruiting.com
+const SAMPLE_BORDERLINE = `From: Sarah Jenkins <s.jenkins@talent-partners.com>
+Subject: Opportunity with Acme Technologies
 
-Hi,
-
-I'm David Chen from Talent Partners Recruiting. We're hiring for a Marketing Coordinator contract role with one of our clients, Acme Corp.
-
-Role: Marketing Coordinator (Contract)
-Client: Acme Corp
-Duration: 6 months (possible extension)
-Rate: $35/hr
-Location: Hybrid - 2 days onsite in Chicago, IL
-
-Requirements:
-- 2+ years marketing experience
-- Proficiency in HubSpot and Google Analytics
-- Bachelor's degree in Marketing or related field
-
-If you're interested, please reply with your updated resume and availability for a phone screen this week.
+Hi there,
+I am a senior recruiter at Talent Partners Staffing. We are currently recruiting on behalf of Acme Technologies for a Backend Developer role with an annual salary of $120,000.
+Please let me know if you would like to review the job description. No upfront payment or fees are ever required.
 
 Best,
-David Chen
-Talent Partners Recruiting
-david.chen@talentpartners-recruiting.com
-(312) 555-0147`;
+Sarah Jenkins
+Talent Partners Staffing
+s.jenkins@talent-partners.com`;
 
 const SAMPLES = [
   { label: 'Try: Suspicious Offer', text: SAMPLE_SUSPICIOUS },
