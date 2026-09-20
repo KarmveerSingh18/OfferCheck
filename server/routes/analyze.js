@@ -28,23 +28,34 @@ router.post('/', async (req, res) => {
     // 2. Extraction Validator (Anti-hallucination gate)
     const { validatedClaims, unverifiedFields } = validateExtraction(rawClaims, offerText);
 
-    // 3. Parallel independent verification signals (only receiving verified inputs)
-    const [consistencyResult, rdapResult, searchResult] = await Promise.all([
-      Promise.resolve().then(() =>
-        checkDomainConsistency(
-          validatedClaims.company_name,
-          validatedClaims.sender_domain,
-          validatedClaims.sender_email
-        )
-      ),
-      lookupRdap(validatedClaims.sender_domain),
+    // 3. Evaluate Domain Consistency first to determine if sender uses a free public email
+    const consistencyResult = checkDomainConsistency(
+      validatedClaims.company_name,
+      validatedClaims.sender_domain,
+      validatedClaims.sender_email
+    );
+
+    const isFreeEmail = Boolean(consistencyResult?.freeEmailProvider);
+
+    // 4. Verification signals (skip RDAP for free email providers to prevent misleading age cards)
+    const [rdapResult, searchResult] = await Promise.all([
+      isFreeEmail
+        ? Promise.resolve({
+            exists: true,
+            domainAgeDays: null,
+            registrationDate: null,
+            registrar: null,
+            status: 'SKIPPED_FREE_EMAIL',
+            isFreeEmail: true
+          })
+        : lookupRdap(validatedClaims.sender_domain),
       searchCompanyCareers(
         validatedClaims.company_name,
         validatedClaims.sender_domain
       )
     ]);
 
-    // 4. Evidence Aggregator (normalizes signals into structured Evidence[])
+    // 5. Evidence Aggregator (normalizes signals into structured Evidence[])
     const evidence = aggregateEvidence(
       validatedClaims,
       unverifiedFields,
@@ -53,7 +64,7 @@ router.post('/', async (req, res) => {
       searchResult
     );
 
-    // 5. Deterministic Risk Engine
+    // 6. Deterministic Risk Engine
     const assessment = calculateRisk(
       validatedClaims,
       consistencyResult,

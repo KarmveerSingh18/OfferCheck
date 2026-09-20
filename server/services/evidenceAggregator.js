@@ -111,9 +111,18 @@ export function aggregateEvidence(claims, unverifiedFields, consistencyResult, r
 
   // 5. RDAP Domain Registration Signal
   if (rdapResult) {
-    const { status, domainAgeDays, registrar, exists } = rdapResult;
+    const { status, domainAgeDays, registrar, exists, isFreeEmail } = rdapResult;
 
-    if (status === 'NOT_FOUND') {
+    if (isFreeEmail || status === 'SKIPPED_FREE_EMAIL') {
+      evidence.push({
+        source: 'rdap',
+        finding: 'Domain age verification not applicable for public email provider',
+        severity: 'info',
+        supports: 'neutral',
+        details: 'Domain registration age is not an applicable legitimacy signal for free public webmail services (e.g. Gmail, Yahoo, Outlook) because anyone can create accounts on them.',
+        verified: true
+      });
+    } else if (status === 'NOT_FOUND') {
       evidence.push({
         source: 'rdap',
         finding: 'Sender domain has no active DNS / RDAP registration',
