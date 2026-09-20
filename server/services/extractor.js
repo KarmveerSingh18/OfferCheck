@@ -2,12 +2,26 @@ import { GoogleGenerativeAI } from '@google/generative-ai';
 
 const EXTRACTION_SYSTEM_PROMPT = `You are a forensic text claim extractor for job and internship offers.
 Your job is ONLY to extract specific, literal claims made in the provided text.
+
 CRITICAL RULES:
 1. Do NOT invent, normalize, correct, or assume domain names or company names. Extract them verbatim as they appear in the text.
 2. If an email address is present (e.g. hr@company-careers.org), sender_domain should be the domain portion ("company-careers.org").
-3. payment_requested MUST be true IF AND ONLY IF the offer requires the candidate to pay/transfer money, buy equipment, pay a deposit, or purchase gift cards. If the text says "no fees", "no upfront payment", or doesn't mention paying money, payment_requested MUST be false.
-4. deadline_pressure_phrases must be exact quotes from the text (e.g. "respond within 24 hours or forfeit").
-5. Return strictly valid JSON with this exact shape:
+3. payment_requested MUST be true IF AND ONLY IF the offer requires the candidate to pay/transfer money, buy equipment, pay an insurance/background deposit, or purchase gift cards. If the text says "no fees", "no upfront payment", or doesn't ask the candidate to pay money, payment_requested MUST be false.
+4. amount: MUST be the specific sum the offer is asking the recipient/candidate to PAY, SEND, TRANSFER, or PROVIDE (e.g., "$250").
+   - CRITICAL: Do NOT extract salary, hourly rate, stipend, bonus, or compensation figures (e.g., "$65/hr", "$5,000/month", "$120,000/year") as amount.
+   - If payment_requested is false, or if no fee/payment amount was specified, amount MUST be null.
+
+EXAMPLES OF AMOUNT EXTRACTION:
+- Example A: "Starting compensation is $65/hr. You are required to pay a refundable equipment fee of $250."
+  -> payment_requested: true, amount: "$250" (Ignore the $65/hr compensation figure).
+- Example B: "Stipend is $1,500/month. No fees are associated with this application."
+  -> payment_requested: false, amount: null (Ignore the $1,500/month stipend figure).
+- Example C: "You must wire a deposit immediately to reserve your spot."
+  -> payment_requested: true, amount: null (Payment demanded but no exact dollar figure stated).
+
+5. deadline_pressure_phrases must be exact quotes from the text (e.g. "respond within 24 hours or forfeit").
+
+6. Return strictly valid JSON with this exact shape:
 {
   "company_name": string | null,
   "sender_email": string | null,
@@ -81,7 +95,11 @@ function sanitizeClaims(data, rawText) {
   }
 
   const payment_requested = Boolean(data?.payment_requested);
-  const amount = typeof data?.amount === 'string' && data.amount.trim() ? data.amount.trim() : null;
+  let amount = typeof data?.amount === 'string' && data.amount.trim() ? data.amount.trim() : null;
+  if (!payment_requested) {
+    amount = null;
+  }
+
   const deadline_pressure_phrases = Array.isArray(data?.deadline_pressure_phrases)
     ? data.deadline_pressure_phrases.filter(p => typeof p === 'string' && p.trim())
     : [];
@@ -115,7 +133,6 @@ function fallbackRegexExtractor(text) {
 
   // Company detection heuristic
   let company_name = null;
-  // Look for phrases like "Google LLC is pleased", "Microsoft Corporation is pleased", "behalf of Acme Technologies", "at Acme Corp"
   const compMatch = text.match(/(?:on\s+behalf\s+of|joining|at|with|welcome\s+to|from)\s+([A-Z][a-zA-Z0-9]+(?:\s+[A-Z][a-zA-Z0-9]+)*(?:\s+(?:LLC|Inc|Corp|Corporation|Technologies|Solutions|Group|Ltd|Staffing|Agency))?)/i)
     || text.match(/([A-Z][a-zA-Z0-9]+(?:\s+[A-Z][a-zA-Z0-9]+)*(?:\s+(?:LLC|Inc|Corp|Corporation|Technologies|Solutions|Group|Ltd)))\s+(?:is\s+pleased|is\s+excited|welcomes|invites)/i);
 
@@ -134,7 +151,8 @@ function fallbackRegexExtractor(text) {
   const affirmativePaymentPatterns = [
     /(?:submit|pay|send|wire|deposit|transfer|purchase)\s+(?:a\s+)?(?:\$\s*\d+|\w+\s+)*(?:fee|deposit|insurance|check|gift\s*card|crypto|bitcoin|equipment)/i,
     /(?:equipment|onboarding|background\s*check|registration|processing)\s+(?:fee|deposit|charge)\s+of\s+\$\s*\d+/i,
-    /(?:refundable|mandatory|required)\s+(?:equipment|onboarding|insurance|deposit|fee)\s+(?:of\s+)?\$\s*\d+/i
+    /(?:refundable|mandatory|required)\s+(?:equipment|onboarding|insurance|deposit|fee)\s+(?:of\s+)?\$\s*\d+/i,
+    /(?:fee|deposit|charge|insurance|payment)\s+of\s+\$\s*\d+/i
   ];
 
   for (const pat of affirmativePaymentPatterns) {
@@ -152,8 +170,13 @@ function fallbackRegexExtractor(text) {
   }
 
   if (payment_requested) {
-    const amountMatch = text.match(/\$\s*([0-9]+(?:,[0-9]{3})*(?:\.[0-9]{2})?)/);
-    if (amountMatch) amount = `$${amountMatch[1]}`;
+    // Specifically extract fee/payment amount, ignoring compensation rates like "$65/hr", "$5000/mo"
+    const feeAmountMatch = text.match(/(?:fee|deposit|charge|insurance|payment|submit|pay|wire|transfer|send)[\w\s]{0,40}?(?:of\s+)?\$\s*([0-9]+(?:,[0-9]{3})*(?:\.[0-9]{2})?)/i)
+      || text.match(/\$\s*([0-9]+(?:,[0-9]{3})*(?:\.[0-9]{2})?)[\w\s]{0,30}?(?:refundable|mandatory|equipment|insurance|onboarding|fee|deposit|charge)/i);
+
+    if (feeAmountMatch) {
+      amount = `$${feeAmountMatch[1]}`;
+    }
   }
 
   // Pressure phrases
